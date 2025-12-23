@@ -31,7 +31,7 @@ let currentFilled = 0;
 let filledSlices = []; // Boolean array
 let score = 0;
 let gameMessage = "";
-let gameState = "START"; // Start with Title Screen
+let gameState = "WAITING_START"; // Start waiting for HTML overlay
 
 // Mirror State
 let isMirrored = true; // User requested flip (Mirror default)
@@ -89,6 +89,16 @@ function setup() {
 
     // Init Game
     resetRound();
+
+    // Expose start function for HTML overlay
+    window.startGame = function () {
+        let overlay = document.getElementById('instruction-overlay');
+        if (overlay) overlay.style.display = 'none';
+
+        userStartAudio(); // Initialize audio context on user gesture
+        gameState = "PLAY";
+        resetRound();
+    };
 }
 
 function windowResized() {
@@ -263,20 +273,10 @@ function draw() {
     noStroke();
     rect(0, 0, width, height);
 
-    // START SCREEN
-    if (gameState === "START") {
-        fill(255);
-        textSize(50);
-        text("KESİR PİZZA ŞEFİ", width / 2, height / 2 - 50);
-        textSize(30);
-        text("Başlamak için Tıkla", width / 2, height / 2 + 50);
-        fill(255, 255, 0);
-        textSize(20);
-        text("(Kamera izni verin ve elinizi gösterin)", width / 2, height / 2 + 100);
-
-        textSize(16);
-        fill(200);
-        text("'M' tuşuna basarak aynalamayı (Mirror) değiştirebilirsiniz.", width / 2, height - 50);
+    // WAITING FOR START (HTML Overlay)
+    if (gameState === "WAITING_START") {
+        // Blur the video background slightly to focus attention on the HTML overlay
+        filter(BLUR, 5);
         return;
     }
 
@@ -463,7 +463,8 @@ function handleInteraction(cx, cy, size) {
             // Hover logic
             if (sliceIndex === lastHoveredSlice) {
                 // Determine duration based on action
-                let duration = (filledSlices[sliceIndex] !== null) ? 1500 : 700; // 1.5s to remove, 0.7s to add
+                // DIFFICULTY INCREASED: 2000ms to remove, 1200ms to add
+                let duration = (filledSlices[sliceIndex] !== null) ? 2000 : 1200;
 
                 // Holding...
                 let elapsed = millis() - hoverStartTime;
@@ -521,11 +522,14 @@ function handleInteraction(cx, cy, size) {
 }
 
 function mousePressed() {
+    // Removed mousePressed start logic as it's handled by HTML button now
+    /*
     if (gameState === "START") {
         userStartAudio();
         gameState = "PLAY";
         resetRound();
     }
+    */
 }
 
 function playPop() {
