@@ -157,24 +157,40 @@ function resetRound() {
         let t = random(toppings);
         let num;
 
-        // Logic Update: Force equivalent fractions if Level >= 2
-        // We want to find a 'num' that has a GCD > 1 with 'targetDenominator'
-        if (level >= 2 && random() > 0.1) { // 90% chance to force equivalent
-            let possibleNums = [];
-            // Find all numbers 1..slices that share a factor
+        // Logic Update: Weighted Random Selection for Variety
+        // We want a mix of:
+        // 1. Equivalent Fractions (GCD > 1) -> High Weight
+        // 2. Complex/Irreducible Fractions (3/4, 2/3) -> High Weight
+        // 3. Unit Fractions (1/4) -> Normal Weight
+
+        if (level >= 2) {
+            let weightedList = [];
+
             for (let i = 1; i < slices; i++) {
+                // Base chance (1 ticket)
+                weightedList.push(i);
+
+                // If Equivalent (GCD > 1), add 2 more tickets (High priority for simplifying)
                 if (gcd(i, slices) > 1) {
-                    possibleNums.push(i);
+                    weightedList.push(i);
+                    weightedList.push(i);
+                }
+
+                // If Non-Unit (Numerator > 1), add 1 more ticket (Boost 3/4, 2/3 etc.)
+                if (i > 1) {
+                    weightedList.push(i);
                 }
             }
 
-            if (possibleNums.length > 0) {
-                num = random(possibleNums);
+            // Random pick from weighted bag
+            if (weightedList.length > 0) {
+                num = random(weightedList);
             } else {
-                num = floor(random(1, slices)); // Fallback
+                num = floor(random(1, slices));
             }
+
         } else {
-            num = floor(random(1, slices)); // Pure random (Level 1 or 10% chance)
+            num = floor(random(1, slices)); // Pure random for Level 1
         }
 
         if (num === 0) num = 1;
