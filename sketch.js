@@ -117,38 +117,28 @@ function gotHands(results) {
 
 function resetRound() {
     // Difficulty and Slices based on level
-    // Custom mapping for Levels to ensure variety
-    // Level 1: Halves (2 slices)
-    // Level 2: Quarters (4 slices)
-    // Level 3: Thirds (3 slices) -- NEW
-    // Level 4: Sixths (6 slices) -- NEW
-    // Level 5: Eighths (8 slices)
-    // Level 6: Fifths (5 slices) -- NEW
-    // Level 7+: Variable Logic
+    // Logic Update: Prioritize equivalent fractions after Level 1
 
     if (level === 1) {
-        slices = 2;
+        slices = 2; // Level 1: Standard Halves
         targetDenominator = 2;
     } else if (level === 2) {
-        slices = 4;
+        slices = 4; // Level 2: Quarters, but we will force 1/2 often
         targetDenominator = 4;
     } else if (level === 3) {
-        slices = 3;
-        targetDenominator = 3;
-    } else if (level === 4) {
-        slices = 6;
+        slices = 6; // Level 3: Sixths (1/3, 1/2, 2/3)
         targetDenominator = 6;
-    } else if (level === 5) {
-        slices = 8;
+    } else if (level === 4) {
+        slices = 8; // Level 4: Eighths (1/4, 1/2, 3/4)
         targetDenominator = 8;
-    } else if (level === 6) {
-        slices = 5;
-        targetDenominator = 5;
+    } else if (level === 5) {
+        slices = 12; // Level 5: Twelfths (Lots of options)
+        targetDenominator = 12;
     } else {
-        // Randomize for higher levels
-        let options = [3, 4, 5, 6, 8];
+        // Randomize for higher levels (Composite numbers preferred)
+        let options = [4, 6, 8, 12];
         slices = random(options);
-        targetDenominator = slices; // Simplify: Denominator matches slices for now
+        targetDenominator = slices;
     }
 
     // Initialize filled state for new slice count
@@ -159,13 +149,34 @@ function resetRound() {
     currentRecipe = [];
 
     // Decide if Simple or Mixed Recipe
-    // Mixed starts appearing from Level 4
-    let isMixed = (level >= 4 && random() > 0.4);
+    // Mixed starts appearing from Level 5 (pushed back a bit to focus on equivalent fractions first)
+    let isMixed = (level >= 5 && random() > 0.5);
 
     if (!isMixed) {
         // Simple: 1 Ingredient
         let t = random(toppings);
-        let num = floor(random(1, targetDenominator)); // Avoid full pizza for challenge? Or allow it.
+        let num;
+
+        // Logic Update: Force equivalent fractions if Level >= 2
+        // We want to find a 'num' that has a GCD > 1 with 'targetDenominator'
+        if (level >= 2 && random() > 0.1) { // 90% chance to force equivalent
+            let possibleNums = [];
+            // Find all numbers 1..slices that share a factor
+            for (let i = 1; i < slices; i++) {
+                if (gcd(i, slices) > 1) {
+                    possibleNums.push(i);
+                }
+            }
+
+            if (possibleNums.length > 0) {
+                num = random(possibleNums);
+            } else {
+                num = floor(random(1, slices)); // Fallback
+            }
+        } else {
+            num = floor(random(1, slices)); // Pure random (Level 1 or 10% chance)
+        }
+
         if (num === 0) num = 1;
 
         let tName = getToppingName(t);
@@ -176,18 +187,17 @@ function resetRound() {
 
         // Find simpler form
         let divisor = gcd(num, targetDenominator);
-        console.log(`Checking GCD for ${num}/${targetDenominator}: ${divisor}`);
 
-        if (divisor > 1 && random() > 0.1) { // 90% Chance if possible
-            // Show simplified
+        // Force display of simplified fraction if divisor > 1 (Logic Update)
+        if (divisor > 1) {
             displayNum = num / divisor;
             displayDen = targetDenominator / divisor;
-            console.log(`Simplifying to ${displayNum}/${displayDen}`);
+            console.log(`Smart Question: Asking for ${displayNum}/${displayDen} on a ${slices}-slice pizza (Needs ${num} slices)`);
         }
 
         currentRecipe.push({
             img: t,
-            count: num, // Actual slice count needed
+            count: num, // Actua slice count needed in background
             label: displayNum + "/" + displayDen + " " + tName
         });
 
@@ -195,8 +205,7 @@ function resetRound() {
         currentToppingImg = t;
 
     } else {
-        // Mixed: 2 Ingredients
-        // Only possible if slice count >= 2
+        // Mixed: 2 Ingredients (Level 5+)
         let shuffled = [...toppings].sort(() => 0.5 - random());
         let t1 = shuffled[0];
         let t2 = shuffled[1];
@@ -209,7 +218,7 @@ function resetRound() {
             let displayNum = count1;
             let displayDen = targetDenominator;
             let divisor = gcd(count1, targetDenominator);
-            if (divisor > 1 && random() > 0.1) {
+            if (divisor > 1) { // Always simplify if possible
                 displayNum = count1 / divisor;
                 displayDen = targetDenominator / divisor;
             }
@@ -229,7 +238,7 @@ function resetRound() {
             let displayNum = count2;
             let displayDen = targetDenominator;
             let divisor = gcd(count2, targetDenominator);
-            if (divisor > 1 && random() > 0.1) {
+            if (divisor > 1) {
                 displayNum = count2 / divisor;
                 displayDen = targetDenominator / divisor;
             }
