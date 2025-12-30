@@ -66,7 +66,7 @@ function setup() {
 
     handPose.detectStart(video, gotHands);
 
-    textFont('Fredoka One');
+    textFont('Nunito');
     textAlign(CENTER, CENTER);
 
     // Prepare Toppings List
@@ -103,6 +103,37 @@ function setup() {
 
 function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
+}
+
+function getLayout() {
+    let isPortrait = width < height;
+    let minDim = min(width, height);
+
+    // Layout Params
+    let layout = {
+        isPortrait: isPortrait,
+        minDim: minDim,
+        cx: width / 2,
+        cy: height / 2,
+        pizzaSize: minDim * 0.85,
+        paletteHeight: 120,
+        headerHeight: 100
+    };
+
+    if (isPortrait) {
+        // Portrait: Header Top, Pizza Center-ish, Palette Bottom
+        layout.pizzaSize = width * 0.85; // Maximize width
+        layout.cy = (height - layout.paletteHeight - layout.headerHeight) / 2 + layout.headerHeight;
+        layout.cx = width / 2;
+    } else {
+        // Landscape: Header Top, Pizza Center-Left, Palette Right
+        // But current design had Pizza Center, Palette Right overlay?
+        // Let's keep Pizza Centered generally but respect Palette if needed
+        layout.pizzaSize = height * 0.75;
+        layout.cy = height / 2 + 30;
+    }
+
+    return layout;
 }
 
 function keyPressed() {
@@ -305,15 +336,15 @@ function draw() {
         return;
     }
 
-    // Determine Scale based on Screen
-    // Pizza should be large but fit
-    let minDim = min(width, height);
-    let pizzaSize = minDim * 0.8;
-    let cx = width / 2;
-    let cy = height / 2 + 50; // Offset for text up top
+    // Determine Layout
+    let layout = getLayout();
+    let minDim = layout.minDim;
+    let pizzaSize = layout.pizzaSize;
+    let cx = layout.cx;
+    let cy = layout.cy;
 
     // 2. Info UI
-    drawHeader(targetNumerator, targetDenominator);
+    drawHeader(targetNumerator, targetDenominator, layout);
 
     // 3. Draw Pizza Base
     imageMode(CENTER);
@@ -326,11 +357,10 @@ function draw() {
     drawToppings(cx, cy, pizzaSize);
 
     // 6. Interaction
-    // 6. Interaction
-    handleInteraction(cx, cy, pizzaSize);
+    handleInteraction(cx, cy, pizzaSize, layout);
 
     // 7. Palette UI
-    drawPalette();
+    drawPalette(layout);
 
     // 7. Feedback and Scoring Logic
     // Equivalent Fractions: How many 8ths equal the target fraction?
@@ -408,6 +438,9 @@ function drawSlicesGrid(cx, cy, size) {
 
 function drawToppings(cx, cy, size) {
     let r_place = size * 0.3; // Distance from center
+    // Reduce topping size -> was size / 6, now smaller.
+    // Also visual balance:
+    let tSize = size / 8.5;
 
     for (let i = 0; i < slices; i++) {
         // Advanced: filledSlices[i] holds the image object or null
@@ -425,22 +458,49 @@ function drawToppings(cx, cy, size) {
     }
 }
 
-function handleInteraction(cx, cy, size) {
+function handleInteraction(cx, cy, size, layout) {
     if (hands.length > 0) {
         let index = hands[0].keypoints[8];
 
         // Normalized Mapping
         let nx;
+        if (layout.isPortrait) {
+            nx = 1 - (index.x / 640); // Standard mirrored logic if width matches?
+            // Wait, handPose default coordinate system is landscape 640x480 usually?
+            // Actually, p5 video capture might change depending on device.
+            // But let's assume valid aspect ratio scaling:
+
+            // Mobile Camera handling can be tricky.
+            // If portrait, video might be 480x640 physically or rotated.
+            // For now, let's trust the coordinate mapping which we are about to fix.
+
+        }
+
+        // Simple Normalized Mapping that works for "Contain" style or "Cover"
+        // Since we draw video(0,0,width,height), we map 0..1 to Width..Height
+
+        if (isMirrored) {
+            nx = index.x / video.width;
+        } else {
+            nx = 1 - (index.x / video.width);
+        }
+        let ny = index.y / video.height;
+
+        let tx = nx * width;
+        let ty = ny * height;
+
+        // Override the previous messy logic block
+        /*
         if (isMirrored) {
             nx = index.x / 640; // Direct X (Already flipped by ML5)
         } else {
             nx = 1 - (index.x / 640); // Flip back for Normal View
         }
-
         let ny = index.y / 480;
 
         let tx = nx * width;
         let ty = ny * height;
+        */
 
         // Smoothing (Lerp)
         if (historyX === 0 && historyY === 0) {
@@ -454,7 +514,7 @@ function handleInteraction(cx, cy, size) {
         let hy = historyY;
 
         // Palette Interaction
-        handlePaletteInteraction(hx, hy);
+        handlePaletteInteraction(hx, hy, layout);
 
         // Check Gesture
         if (isPointing(hands[0])) {
@@ -468,7 +528,7 @@ function handleInteraction(cx, cy, size) {
             noStroke();
             circle(hx, hy, 30);
             fill(255);
-            textSize(16);
+            textSize(layout.minDim * 0.04);
             text("Sadece İşaret Parmağı!", hx, hy - 40);
             return; // EXIT if not pointing
         }
@@ -573,13 +633,19 @@ function playSuccess() {
     setTimeout(() => { successOsc.freq(1200); successEnv.play(successOsc); }, 200);
 }
 
-function drawHeader(num, den) {
+function drawHeader(num, den, layout) {
     fill(255);
-    textSize(24);
-    text("PUAN: " + score, width - 80, 40);
+    textSize(layout.minDim * 0.05);
+
+    if (layout.isPortrait) {
+        text("PUAN: " + score, width * 0.15, 30);
+    } else {
+        text("PUAN: " + score, width - 80, 40);
+    }
 
     // Task Text
-    textSize(35);
+    // Task Text
+    textSize(layout.minDim * 0.07);
     fill(255, 200, 50);
 
     // Construct text from currentRecipe
@@ -593,9 +659,9 @@ function drawHeader(num, den) {
     text(txt, width / 2, 60);
 
     // Subtext
-    textSize(18);
+    textSize(layout.minDim * 0.035);
     fill(200);
-    text("(Sadece İŞARET PARMAĞINIZI uzatarak kullanın)", width / 2, 100);
+    text("(Sadece İŞARET PARMAĞINIZI uzatarak kullanın)", width / 2, layout.isPortrait ? 80 : 100);
 }
 
 // Gesture Check: Is Index Extended and others curled?
@@ -636,52 +702,108 @@ function isPointing(hand) {
 }
 
 // PALETTE UI
-function drawPalette() {
-    let px = width - 80;
-    let py = 150;
-    let gap = 100;
-
+function drawPalette(layout) {
     push();
-    textAlign(CENTER);
-    textSize(20);
-    fill(255);
+    textAlign(CENTER, CENTER);
     noStroke();
-    text("MALZEMELER", px, py - 60);
 
-    for (let i = 0; i < toppings.length; i++) {
-        let tImg = toppings[i];
-        let y = py + i * gap;
+    let iconSize = layout.minDim * 0.12;
+    let gap = iconSize * 1.4;
 
-        // Highlight active
-        if (currentToppingImg === tImg) {
-            fill(255, 255, 255, 100);
-            circle(px, y, 90);
+    if (layout.isPortrait) {
+        // HORIZONTAL BOTTOM
+        let py = height - iconSize * 0.8;
+        let totalW = (toppings.length - 1) * gap;
+        let startX = width / 2 - totalW / 2;
+
+        fill(255, 200);
+        textSize(layout.minDim * 0.04);
+        text("MALZEMELER", width / 2, py - iconSize * 0.8);
+
+        for (let i = 0; i < toppings.length; i++) {
+            let tImg = toppings[i];
+            let x = startX + i * gap;
+
+            // Highlight active
+            if (currentToppingImg === tImg) {
+                fill(255, 255, 255, 100);
+                circle(x, py, iconSize * 1.3);
+            }
+
+            imageMode(CENTER);
+            image(tImg, x, py, iconSize, iconSize);
         }
 
-        imageMode(CENTER);
-        image(tImg, px, y, 70, 70);
+    } else {
+        // VERTICAL RIGHT
+        let px = width - 80;
+        let py = 150;
+        let vGap = 100;
+
+        fill(255);
+        textSize(20);
+        text("MALZEMELER", px, py - 60);
+
+        for (let i = 0; i < toppings.length; i++) {
+            let tImg = toppings[i];
+            let y = py + i * vGap;
+
+            // Highlight active
+            if (currentToppingImg === tImg) {
+                fill(255, 255, 255, 100);
+                circle(px, y, 90);
+            }
+
+            imageMode(CENTER);
+            image(tImg, px, y, 70, 70);
+        }
     }
     pop();
 }
 
-function handlePaletteInteraction(hx, hy) {
-    let px = width - 80;
-    let py = 150;
-    let gap = 100;
+function handlePaletteInteraction(hx, hy, layout) {
 
-    for (let i = 0; i < toppings.length; i++) {
-        let y = py + i * gap;
-        let d = dist(hx, hy, px, y);
+    let iconSize = layout.minDim * 0.12;
+    let gap = iconSize * 1.4;
 
-        if (d < 45) {
-            // Hovered over topping
-            currentToppingImg = toppings[i];
+    if (layout.isPortrait) {
+        let py = height - iconSize * 0.8;
+        let totalW = (toppings.length - 1) * gap;
+        let startX = width / 2 - totalW / 2;
 
-            // Visual feedback
-            noFill();
-            stroke(255, 255, 0);
-            strokeWeight(3);
-            circle(px, y, 90);
+        for (let i = 0; i < toppings.length; i++) {
+            let x = startX + i * gap;
+            let d = dist(hx, hy, x, py);
+
+            if (d < iconSize * 0.8) {
+                currentToppingImg = toppings[i];
+                // Visual feedback
+                noFill();
+                stroke(255, 255, 0);
+                strokeWeight(3);
+                circle(x, py, iconSize * 1.3);
+            }
+        }
+
+    } else {
+        let px = width - 80;
+        let py = 150;
+        let vGap = 100;
+
+        for (let i = 0; i < toppings.length; i++) {
+            let y = py + i * vGap;
+            let d = dist(hx, hy, px, y);
+
+            if (d < 45) {
+                // Hovered over topping
+                currentToppingImg = toppings[i];
+
+                // Visual feedback
+                noFill();
+                stroke(255, 255, 0);
+                strokeWeight(3);
+                circle(px, y, 90);
+            }
         }
     }
 }

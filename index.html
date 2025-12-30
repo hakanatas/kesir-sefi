@@ -8,7 +8,7 @@
     <title>Kesir Pizza Şefi (Fraction Pizza Chef)</title>
 
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
 
     <!-- p5.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
@@ -28,8 +28,17 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            font-family: 'Comic Sans MS', 'Verdana', sans-serif;
+            height: 100dvh;
+            /* Mobile viewport fix */
+            width: 100vw;
+            width: 100dvw;
+            font-family: 'Nunito', sans-serif;
             /* Playful font for kids */
+            touch-action: none;
+            /* Prevent browser zoom/scroll */
+            user-select: none;
+            /* Prevent text selection */
+            -webkit-user-select: none;
         }
 
         canvas {
@@ -65,7 +74,7 @@
             text-align: center;
             color: rgba(255, 255, 255, 0.7);
             font-size: 14px;
-            font-family: sans-serif;
+            font-family: 'Nunito', sans-serif;
             pointer-events: none;
             /* Let clicks pass through */
             z-index: 1000;
@@ -85,7 +94,7 @@
             justify-content: center;
             align-items: center;
             z-index: 2000;
-            font-family: 'Fredoka One', cursive;
+            font-family: 'Nunito', sans-serif;
             padding: 20px;
             box-sizing: border-box;
             text-align: center;
@@ -96,11 +105,12 @@
             color: #f1c40f;
             margin-bottom: 20px;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            font-weight: 900;
         }
 
         #instruction-overlay ul {
             text-align: left;
-            font-family: 'Comic Sans MS', sans-serif;
+            font-family: 'Nunito', sans-serif;
             font-size: 1.2em;
             line-height: 1.6;
             background: rgba(0, 0, 0, 0.3);
@@ -120,7 +130,8 @@
             border: none;
             padding: 15px 40px;
             font-size: 2em;
-            font-family: 'Fredoka One', cursive;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 900;
             border-radius: 50px;
             cursor: pointer;
             transition: transform 0.2s, background-color 0.2s;
@@ -142,7 +153,7 @@
             <li>☝️ <strong>Nasıl Oynanır:</strong> Sadece <strong>İŞARET PARMAĞINI</strong> kullan.</li>
             <li>⏱️ <strong>Seçim:</strong> Malzeme koymak veya silmek için parmağını dilimin üzerinde <strong>BİRAZ
                     BEKLET</strong>.</li>
-            <li>🎨 <strong>Malzeme Seç:</strong> Sağdaki menüden farklı malzemeler seçebilirsin.</li>
+            <li>🎨 <strong>Malzeme Seç:</strong> Sağdaki/Alttaki menüden farklı malzemeler seçebilirsin.</li>
         </ul>
         <button id="start-btn" onclick="startGame()">OYUNA BAŞLA ▶</button>
     </div>
