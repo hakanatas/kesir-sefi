@@ -652,9 +652,15 @@ function drawHeader(num, den, layout) {
     textSize(layout.minDim * 0.05);
 
     if (layout.isPortrait) {
-        text("PUAN: " + score, width * 0.15, 30);
+        push();
+        textAlign(LEFT, CENTER);
+        text("PUAN: " + score, 30, 40);
+        pop();
     } else {
-        text("PUAN: " + score, width - 80, 40);
+        push();
+        textAlign(RIGHT, CENTER);
+        text("PUAN: " + score, width - 30, 40);
+        pop();
     }
 
     // Task Text
