@@ -438,9 +438,8 @@ function drawSlicesGrid(cx, cy, size) {
 
 function drawToppings(cx, cy, size) {
     let r_place = size * 0.3; // Distance from center
-    // Reduce topping size -> was size / 6, now smaller.
-    // Also visual balance:
-    let tSize = size / 8.5;
+    // Increased size for visibility (was size/6)
+    let tSize = size / 5.5;
 
     for (let i = 0; i < slices; i++) {
         // Advanced: filledSlices[i] holds the image object or null
@@ -451,9 +450,24 @@ function drawToppings(cx, cy, size) {
             let tx = cx + cos(angle) * r_place;
             let ty = cy + sin(angle) * r_place;
 
-            // Pulse effect?
-            let pulse = 1;
-            image(img, tx, ty, (size / 6) * pulse, (size / 6) * pulse);
+            // Pulse effect to make it pop
+            let pulse = 1 + 0.03 * sin(frameCount * 0.1 + i);
+            let finalSize = tSize * pulse;
+
+            // Add Glow/Shadow for contrast against pizza base
+            push();
+            // Specific glow color for Pepperoni/Sucuk (Reddish) vs others
+            if (img === imgPepperoni) {
+                drawingContext.shadowBlur = 20;
+                drawingContext.shadowColor = 'rgba(255, 255, 200, 0.8)'; // Warm yellow-ish glow for contrast
+            } else {
+                drawingContext.shadowBlur = 15;
+                drawingContext.shadowColor = 'rgba(255, 255, 255, 0.6)';
+            }
+
+            imageMode(CENTER);
+            image(img, tx, ty, finalSize, finalSize);
+            pop();
         }
     }
 }
