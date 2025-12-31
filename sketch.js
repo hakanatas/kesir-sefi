@@ -672,10 +672,10 @@ function drawHeader(num, den, layout) {
 
     text(txt, width / 2, 60);
 
-    // Subtext
+    // Subtext - Persistent Instruction
     textSize(layout.minDim * 0.035);
     fill(200);
-    text("(Sadece İŞARET PARMAĞINIZI uzatarak kullanın)", width / 2, layout.isPortrait ? 80 : 100);
+    text("İşaret parmağınız ile Malzeme seçip Pizza'nın üzerine yerleştirin", width / 2, layout.isPortrait ? 85 : 105);
 }
 
 // Gesture Check: Is Index Extended and others curled?
