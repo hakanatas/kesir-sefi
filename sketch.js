@@ -180,8 +180,8 @@ function resetRound() {
     currentRecipe = [];
 
     // Decide if Simple or Mixed Recipe
-    // Mixed starts appearing from Level 5 (pushed back a bit to focus on equivalent fractions first)
-    let isMixed = (level >= 5 && random() > 0.5);
+    // Mixed starts appearing after 4 questions (Score >= 40) rather than Level 5
+    let isMixed = (score >= 40 && random() > 0.5);
 
     if (!isMixed) {
         // Simple: 1 Ingredient
