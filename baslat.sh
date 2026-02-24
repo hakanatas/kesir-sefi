@@ -26,6 +26,8 @@ $BROWSER_CMD \
   --overscroll-history-navigation=0 \
   --disable-features=WebGPU,TranslateUI \
   --no-sandbox \
+  --disable-gpu \
+  --disable-dev-shm-usage \
   --noerrdialogs \
   --disable-infobars
 
