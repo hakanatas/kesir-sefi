@@ -9,7 +9,14 @@ sleep 2
 
 # Chromium'u tam ekran, çeviri olmadan ve otomatik medya oynatma izniyle başlat
 # Raspberry Pi'de bazen 'chromium-browser' yerine komut ismi 'chromium' olabilir
-chromium \
+# CSI kameralarını tarayıcıya /dev/video0 olarak göstermek için 'libcamerify' kullanıyoruz
+if command -v libcamerify &> /dev/null; then
+    BROWSER_CMD="libcamerify chromium"
+else
+    BROWSER_CMD="chromium"
+fi
+
+$BROWSER_CMD \
   --app=http://localhost:8000 \
   --kiosk \
   --window-position=0,0 \
@@ -17,7 +24,7 @@ chromium \
   --use-fake-ui-for-media-stream \
   --disable-pinch \
   --overscroll-history-navigation=0 \
-  --disable-features=TranslateUI \
+  --disable-features=WebGPU,TranslateUI \
   --noerrdialogs \
   --disable-infobars
 
