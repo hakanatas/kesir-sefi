@@ -7,7 +7,8 @@ SERVER_PID=$!
 sleep 2
 
 # Chromium'u tam ekran, çeviri olmadan ve otomatik medya oynatma izniyle başlat
-chromium-browser \
+# Raspberry Pi'de bazen 'chromium-browser' yerine komut ismi 'chromium' olabilir
+chromium \
   --app=http://localhost:8000 \
   --kiosk \
   --window-position=0,0 \
