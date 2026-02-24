@@ -81,121 +81,12 @@
         }
 
         /* ... existing styles ... */
-        #instruction-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(44, 62, 80, 0.95);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-            font-family: 'Nunito', sans-serif;
-            padding: 20px;
-            box-sizing: border-box;
-            text-align: center;
-        }
-
-        #instruction-overlay h1 {
-            font-size: 3em;
-            color: #f1c40f;
-            margin-bottom: 20px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-            font-weight: 900;
-        }
-
-        #instruction-overlay ul {
-            text-align: left;
-            font-family: 'Nunito', sans-serif;
-            font-size: 1.2em;
-            line-height: 1.6;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 30px 50px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            max-width: 600px;
-        }
-
-        #instruction-overlay li {
-            margin-bottom: 10px;
-        }
-
-        #start-btn {
-            background-color: #e74c3c;
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            font-size: 2em;
-            font-family: 'Nunito', sans-serif;
-            font-weight: 900;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: transform 0.2s, background-color 0.2s;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        }
-
-        #start-btn:hover {
-            transform: scale(1.1);
-            background-color: #c0392b;
-        }
-
-        /* Mobile Optimization */
-        @media (max-width: 768px) {
-            #instruction-overlay {
-                justify-content: flex-start;
-                /* Align top to allow scroll */
-                overflow-y: auto;
-                /* Enable scroll */
-                padding: 40px 20px;
-                -webkit-overflow-scrolling: touch;
-            }
-
-            #instruction-overlay h1 {
-                font-size: 2em;
-                /* Smaller Title */
-                margin-top: 20px;
-                margin-bottom: 10px;
-            }
-
-            #instruction-overlay ul {
-                padding: 20px 25px;
-                /* Compact padding */
-                font-size: 1em;
-                /* Smaller text */
-                width: 90%;
-                /* Fit width */
-                margin-bottom: 20px;
-            }
-
-            #start-btn {
-                font-size: 1.5em;
-                /* Smaller button */
-                padding: 12px 30px;
-                margin-bottom: 50px;
-                /* Space for scrolling */
-            }
-        }
+        /* Removed instruction overlay styles for auto-start */
     </style>
 </head>
 
 <body>
-    <div id="instruction-overlay">
-        <h1>KESİR PİZZA ŞEFİ</h1>
-        <ul>
-            <li>🍕 <strong>Görevin:</strong> İstenen kesir kadar pizza dilimini malzemeyle doldur!</li>
-            <li>☝️ <strong>Nasıl Oynanır:</strong> Sadece <strong>İŞARET PARMAĞINI</strong> kullan.</li>
-            <li>⏱️ <strong>Seçim:</strong> Malzeme koymak veya silmek için parmağını dilimin üzerinde <strong>BİRAZ
-                    BEKLET</strong>.</li>
-            <li>🎨 <strong>Malzeme Seç:</strong> Sağdaki/Alttaki menüden farklı malzemeler seçebilirsin.</li>
-            <li>🎯 <strong>Seviye Seç:</strong> Kolay, Orta veya Zor zorluk seviyesinden birini seç!</li>
-        </ul>
-        <button id="start-btn" onclick="startGame()">OYUNA BAŞLA ▶</button>
-    </div>
-
+    <!-- Auto-starting version, overlay removed -->
     <div id="footer">Bu oyun FTC #24230 takımı tarafından YZ kullanarak yapılmıştır.</div>
     <script src="sketch.js?v=4.0"></script>
 </body>

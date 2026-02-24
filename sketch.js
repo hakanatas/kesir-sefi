@@ -31,7 +31,7 @@ let smoothFactor = 0.2;
 // Game State Object
 // ═══════════════════════════════════════
 let G = {
-    phase: "WAITING_START", // WAITING_START | DIFFICULTY_SELECT | PLAY | ROUND_SUCCESS | ROUND_FAIL
+    phase: "DIFFICULTY_SELECT", // WAITING_START | DIFFICULTY_SELECT | PLAY | ROUND_SUCCESS | ROUND_FAIL
     difficulty: null,       // "kolay" | "orta" | "zor"
     questionType: "placement", // "placement" | "addition" | "decimal"
 
@@ -78,7 +78,7 @@ function setup() {
     createCanvas(windowWidth, windowHeight);
 
     video = createCapture(VIDEO);
-    video.size(640, 480);
+    video.size(320, 240); // Optimized for Raspberry Pi
     video.hide();
 
     handPose.detectStart(video, gotHands);
@@ -100,12 +100,7 @@ function setup() {
     successEnv.setADSR(0.1, 0.2, 0.5, 0.5);
     successEnv.setRange(0.4, 0);
 
-    window.startGame = function () {
-        let overlay = document.getElementById('instruction-overlay');
-        if (overlay) overlay.style.display = 'none';
-        userStartAudio();
-        G.phase = "DIFFICULTY_SELECT";
-    };
+    // No instruction overlay button needed anymore since the game auto starts
 }
 
 function windowResized() {
@@ -157,10 +152,7 @@ function getLayout() {
 function draw() {
     drawVideoBackground();
 
-    if (G.phase === "WAITING_START") {
-        filter(BLUR, 5);
-        return;
-    }
+    // Application auto-starts, bypassing WAITING_START
 
     if (G.phase === "DIFFICULTY_SELECT") {
         drawDifficultySelect(getLayout());
