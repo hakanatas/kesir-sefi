@@ -82,14 +82,12 @@ function preload() {
 function setup() {
     createCanvas(windowWidth, windowHeight);
 
-    // CSI (Raspberry Pi) Kameralarda "mandatory" boyutlar OverconstrainedError verip kamerayı bozabilir.
-    // Bu yüzden sadece video istenip, boyutlandırma yazılımsal olarak küçültülür.
-    let constraints = {
-        video: true,
-        audio: false
-    };
-    video = createCapture(constraints);
-    video.size(320, 240); // Yazılımsal olarak donanımı yormayacak boyuta getir
+    // Raspberry Pi 5 / CSI Kamera ve USB uyumluluğu için basit yakalama ayarı
+    video = createCapture(VIDEO);
+
+    // WebGL / Performans için video DOM öğesi özelliklerini güvence altına al
+    video.elt.setAttribute('playsinline', '');
+    video.size(320, 240);
     video.hide();
 
     handPose.detectStart(video, gotHands);
@@ -99,9 +97,13 @@ function setup() {
 
     toppings = [imgPepperoni, imgMushroom, imgOlive];
 
-    // Autoplay policy kapalı olduğu için AudioContext i doğrudan başlatıyoruz.
-    if (getAudioContext().state !== 'running') {
-        getAudioContext().resume();
+    // Autoplay policy kapalı olduğu için AudioContext'i güvenli (hata vermeyecek) şekilde başlat
+    try {
+        if (getAudioContext().state !== 'running') {
+            getAudioContext().resume();
+        }
+    } catch (e) {
+        console.warn("AudioContext otomatik baslatilamadi, ilk dokunusu bekliyor.");
     }
 
     popOsc = new p5.Oscillator('sine');
