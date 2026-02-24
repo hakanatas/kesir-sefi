@@ -13,6 +13,8 @@ chromium \
   --kiosk \
   --window-position=0,0 \
   --autoplay-policy=no-user-gesture-required \
+  --use-fake-ui-for-media-stream \
+  --enable-features=V4L2VideoDecoder \
   --disable-pinch \
   --overscroll-history-navigation=0 \
   --disable-features=TranslateUI \

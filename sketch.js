@@ -31,8 +31,8 @@ let smoothFactor = 0.2;
 // Game State Object
 // ═══════════════════════════════════════
 let G = {
-    phase: "DIFFICULTY_SELECT", // WAITING_START | DIFFICULTY_SELECT | PLAY | ROUND_SUCCESS | ROUND_FAIL
-    difficulty: null,       // "kolay" | "orta" | "zor"
+    phase: "PLAY", // Otomatik olarak oyuna gir
+    difficulty: "zor",       // Varsayılan seviye: Zor
     questionType: "placement", // "placement" | "addition" | "decimal"
 
     level: 1,
@@ -100,7 +100,8 @@ function setup() {
     successEnv.setADSR(0.1, 0.2, 0.5, 0.5);
     successEnv.setRange(0.4, 0);
 
-    // No instruction overlay button needed anymore since the game auto starts
+    // Oyunu başlatan ilk round oluşturmayı çağırıyoruz
+    resetRound();
 }
 
 function windowResized() {
