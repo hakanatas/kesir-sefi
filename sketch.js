@@ -65,6 +65,11 @@ let G = {
 // Preload & Setup
 // ═══════════════════════════════════════
 function preload() {
+    // Raspberry Pi'de Tensorflow WebGPU çökmelerini ve TypeError ('features') hatalarını önlemek için WebGL zorla
+    if (window.ml5 && typeof window.ml5.setBackend === 'function') {
+        ml5.setBackend("webgl");
+    }
+
     handPose = ml5.handPose({ flipped: true });
 
     let cb = "?v=4.0";
