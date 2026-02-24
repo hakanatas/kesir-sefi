@@ -1,11 +1,12 @@
 #!/bin/bash
 # Bulunulan dizinde (script'in olduğu klasörde) Python ile basit bir sunucu başlat
 cd "$(dirname "$0")" || exit
-python3 -m http.server 8000 &
+# Python ile basit bir sunucu başlat, ipv4 spesifik olarak 127.0.0.1'e bağla
+python3 -m http.server 8000 --bind 127.0.0.1 &
 SERVER_PID=$!
 
-# Sunucunun başlaması için 2 saniye bekle
-sleep 2
+# Sunucunun başlaması için 5 saniye bekle
+sleep 5
 
 # Chromium'u tam ekran, çeviri olmadan ve otomatik medya oynatma izniyle başlat
 # Raspberry Pi'de bazen 'chromium-browser' yerine komut ismi 'chromium' olabilir
