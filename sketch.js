@@ -77,19 +77,14 @@ function preload() {
 function setup() {
     createCanvas(windowWidth, windowHeight);
 
-    // Smart AI Kamera / Raspberry Pi için özel capture ayarı
+    // CSI (Raspberry Pi) Kameralarda "mandatory" boyutlar OverconstrainedError verip kamerayı bozabilir.
+    // Bu yüzden sadece video istenip, boyutlandırma yazılımsal olarak küçültülür.
     let constraints = {
-        video: {
-            mandatory: {
-                minWidth: 320,
-                minHeight: 240
-            },
-            optional: [{ env: "environment" }]
-        },
+        video: true,
         audio: false
     };
     video = createCapture(constraints);
-    video.size(320, 240); // Optimized for Raspberry Pi
+    video.size(320, 240); // Yazılımsal olarak donanımı yormayacak boyuta getir
     video.hide();
 
     handPose.detectStart(video, gotHands);
@@ -99,7 +94,10 @@ function setup() {
 
     toppings = [imgPepperoni, imgMushroom, imgOlive];
 
-    userStartAudio();
+    // Autoplay policy kapalı olduğu için AudioContext i doğrudan başlatıyoruz.
+    if (getAudioContext().state !== 'running') {
+        getAudioContext().resume();
+    }
 
     popOsc = new p5.Oscillator('sine');
     popEnv = new p5.Envelope();
