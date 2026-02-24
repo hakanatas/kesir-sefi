@@ -1,5 +1,6 @@
 #!/bin/bash
-# Bulunulan dizinde Python ile basit bir sunucu başlat (Arkada çalışsın)
+# Bulunulan dizinde (script'in olduğu klasörde) Python ile basit bir sunucu başlat
+cd "$(dirname "$0")" || exit
 python3 -m http.server 8000 &
 SERVER_PID=$!
 
