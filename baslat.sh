@@ -28,6 +28,8 @@ $BROWSER_CMD \
   --no-sandbox \
   --disable-gpu \
   --disable-dev-shm-usage \
+  --disable-gpu-compositing \
+  --in-process-gpu \
   --noerrdialogs \
   --disable-infobars
 
