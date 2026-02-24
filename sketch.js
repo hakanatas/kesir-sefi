@@ -77,7 +77,18 @@ function preload() {
 function setup() {
     createCanvas(windowWidth, windowHeight);
 
-    video = createCapture(VIDEO);
+    // Smart AI Kamera / Raspberry Pi için özel capture ayarı
+    let constraints = {
+        video: {
+            mandatory: {
+                minWidth: 320,
+                minHeight: 240
+            },
+            optional: [{ env: "environment" }]
+        },
+        audio: false
+    };
+    video = createCapture(constraints);
     video.size(320, 240); // Optimized for Raspberry Pi
     video.hide();
 
