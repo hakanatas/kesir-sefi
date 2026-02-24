@@ -14,6 +14,7 @@ chromium \
   --window-position=0,0 \
   --autoplay-policy=no-user-gesture-required \
   --use-fake-ui-for-media-stream \
+  --unsafely-treat-insecure-origin-as-secure=http://localhost:8000 \
   --enable-features=V4L2VideoDecoder \
   --disable-pinch \
   --overscroll-history-navigation=0 \

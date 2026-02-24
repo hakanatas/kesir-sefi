@@ -32,7 +32,7 @@ let smoothFactor = 0.2;
 // ═══════════════════════════════════════
 let G = {
     phase: "PLAY", // Otomatik olarak oyuna gir
-    difficulty: "zor",       // Varsayılan seviye: Zor
+    difficulty: "orta",       // Varsayılan seviye: Orta
     questionType: "placement", // "placement" | "addition" | "decimal"
 
     level: 1,
