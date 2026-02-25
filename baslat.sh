@@ -30,6 +30,9 @@ $BROWSER_CMD \
   --disable-pinch \
   --overscroll-history-navigation=0 \
   --disable-features=WebGPU,TranslateUI \
+  --incognito \
+  --disk-cache-dir=/dev/null \
+  --disable-cache \
   --no-sandbox \
   --disable-gpu \
   --disable-dev-shm-usage \
