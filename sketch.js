@@ -85,12 +85,10 @@ function preload() {
 function setup() {
     createCanvas(windowWidth, windowHeight);
 
-    // Raspberry Pi 5 / CSI ve USB kameralar için video ayarı
     let constraints = {
         video: {
             width: { ideal: 640 },
-            height: { ideal: 480 },
-            facingMode: "user"
+            height: { ideal: 480 }
         },
         audio: false
     };
