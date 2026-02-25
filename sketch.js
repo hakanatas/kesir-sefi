@@ -85,9 +85,21 @@ function preload() {
 function setup() {
     createCanvas(windowWidth, windowHeight);
 
-    // Raspberry Pi 5 / CSI Kamera ve USB uyumluluğu için basit yakalama ayarı
-    video = createCapture(VIDEO, function () {
+    // Raspberry Pi 5 / CSI ve USB kameralar için video ayarı
+    let constraints = {
+        video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            facingMode: "user"
+        },
+        audio: false
+    };
+
+    video = createCapture(constraints, function () {
+        console.log("Kamera basariyla yuklendi.");
         G.cameraLoaded = true;
+        // Kamera ancak yüklendiğinde yapay zekayı başlat
+        handPose.detectStart(video, gotHands);
     });
 
     // Kamera belirli bir sürede yüklenmezse hata ver
@@ -101,10 +113,8 @@ function setup() {
 
     // WebGL / Performans için video DOM öğesi özelliklerini güvence altına al
     video.elt.setAttribute('playsinline', '');
-    video.size(320, 240);
+    video.size(640, 480);
     video.hide();
-
-    handPose.detectStart(video, gotHands);
 
     textFont('Nunito');
     textAlign(CENTER, CENTER);
