@@ -1,48 +1,37 @@
 #!/bin/bash
-# Bulunulan dizinde (script'in olduğu klasörde) Python ile basit bir sunucu başlat
-cd "$(dirname "$0")" || exit
+# Kesir Şefi - Raspberry Pi 5 Temiz Başlatıcı (Web Sürümü)
+# Doğrudan GitHub Pages üzerinden açılır, yerel sunucuya ihtiyaç yoktur.
 
-# Önceden açık kalmış sunucuları kapat
-pkill -f "python3 -m http.server 8000"
+echo "🧹 Eski süreçler temizleniyor..."
+sudo pkill -f rpicam
+sudo pkill -f ffmpeg
+pkill -f chromium
+sudo rmmod v4l2loopback 2>/dev/null
+
+echo "📹 Sanal kamera altyapısı (v4l2loopback) hazırlanıyor..."
+sudo modprobe v4l2loopback devices=1 video_nr=10 card_label="KesirSefiKamera" exclusive_caps=1
 sleep 1
 
-# Python ile basit bir sunucu başlat (IPv4 bağlamı otomatik)
-python3 -m http.server 8000 &
-SERVER_PID=$!
+echo "▶️ Kamera akışı başlatılıyor..."
+# ffmpeg karmaşası olmadan, doğrudan rpicam-vid üzerinden sanal kameraya aktarıyoruz
+rpicam-vid -t 0 --width 640 --height 480 --framerate 30 --codec yuv420 -o /dev/video10 >/dev/null 2>&1 &
+CAM_PID=$!
 
-# Sunucunun başlaması için 5 saniye bekle
-sleep 5
+# Kameranın kendine gelmesi için 2 saniye bekliyoruz
+sleep 2
 
-# Chromium (veya chromium-browser) komutunu bul
-if command -v libcamerify >/dev/null 2>&1; then
-    BROWSER_CMD="libcamerify chromium"
-else
-    BROWSER_CMD="chromium"
-fi
-
-# Geçici bir cache klasörü oluştur (her çalıştırmada temiz)
-CACHE_DIR="/tmp/chromium_cache_$(date +%s)"
-mkdir -p "$CACHE_DIR"
-
-# Chromium'u başlat (incognito + cache yönlendirme)
-$BROWSER_CMD \
-  --app=http://127.0.0.1:8000 \
+echo "🌐 Tarayıcı (Kesir Şefi) açılıyor..."
+# GitHub Pages adresini Chromium ile kısıtlamalar olmadan açıyoruz
+chromium \
+  --app=https://hakanatas.github.io/kesir-sefi \
   --kiosk \
-  --window-position=0,0 \
-  --autoplay-policy=no-user-gesture-required \
   --use-fake-ui-for-media-stream \
-  --disable-pinch \
-  --overscroll-history-navigation=0 \
-  --disable-features=WebGPU,TranslateUI \
-  --incognito \
-  --disk-cache-dir="$CACHE_DIR" \
+  --autoplay-policy=no-user-gesture-required \
+  --disable-features=TranslateUI \
   --no-sandbox \
-  --disable-gpu \
-  --disable-dev-shm-usage \
-  --disable-gpu-compositing \
-  --in-process-gpu \
-  --noerrdialogs \
-  --disable-infobars
+  --disable-gpu-compositing
 
-# Tarayıcı kapandığında Python sunucusunu da durdur
-kill $SERVER_PID
+# Tarayıcı (oyun) kapatıldığında arkadaki kamerayı da temizle
+echo "🛑 Oyun kapatıldı, kamera akışı durduruluyor..."
+kill $CAM_PID
+sudo rmmod v4l2loopback 2>/dev/null
