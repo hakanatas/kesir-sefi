@@ -59,6 +59,38 @@
             border-radius: 10px;
         }
 
+        /* Custom loading screen styling */
+        #p5_loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #2c3e50;
+            z-index: 10000;
+        }
+
+        #p5_loading h2 {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.6;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.6;
+            }
+        }
+
         /* Force hide the DOM video element created by p5.js */
         video {
             display: none !important;
@@ -88,6 +120,28 @@
 </head>
 
 <body>
+    <!-- Custom p5 loading screen to prevent white flash -->
+    <div id="p5_loading">
+        <h2 style="color:white; font-family:'Nunito', sans-serif;">Yükleniyor... (Kamera ve Yapay Zeka Hazırlanıyor)
+        </h2>
+    </div>
+
+    <!-- Hataları ekranda göstermek için -->
+    <script>
+        window.addEventListener('error', function(e) {
+            let errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'position:absolute; top:10px; left:10px; z-index:9999; background:white; color:red; padding:15px; font-weight:bold; max-width:90vw;';
+            errorDiv.innerHTML = 'HATA: ' + e.message + '<br>Satır: ' + e.lineno;
+            document.body.appendChild(errorDiv);
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            let errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'position:absolute; top:10px; left:10px; z-index:9999; background:white; color:red; padding:15px; font-weight:bold; max-width:90vw;';
+            errorDiv.innerHTML = 'HATA (Promise): ' + e.reason;
+            document.body.appendChild(errorDiv);
+        });
+    </script>
+
     <!-- Auto-starting version, overlay removed -->
     <div id="footer">Bu oyun FTC #24230 takımı tarafından YZ kullanarak yapılmıştır.</div>
     <script src="sketch.js?v=4.0"></script>
