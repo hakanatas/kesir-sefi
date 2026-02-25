@@ -58,7 +58,10 @@ let G = {
 
     // Difficulty select hover
     diffHoverIndex: -1,
-    diffHoverStart: 0
+    diffHoverStart: 0,
+
+    cameraLoaded: false,
+    cameraError: false
 };
 
 // ═══════════════════════════════════════
@@ -83,7 +86,18 @@ function setup() {
     createCanvas(windowWidth, windowHeight);
 
     // Raspberry Pi 5 / CSI Kamera ve USB uyumluluğu için basit yakalama ayarı
-    video = createCapture(VIDEO);
+    video = createCapture(VIDEO, function () {
+        G.cameraLoaded = true;
+    });
+
+    // Kamera belirli bir sürede yüklenmezse hata ver
+    setTimeout(() => {
+        // readyState 0 ise veya video elementine hiç ulaşılamadıysa kamera açılmamıştır
+        if (!G.cameraLoaded && (!video || !video.elt || video.elt.readyState === 0)) {
+            G.cameraError = true;
+            console.error("Kamera bulunamadi veya izin verilmedi.");
+        }
+    }, 4000);
 
     // WebGL / Performans için video DOM öğesi özelliklerini güvence altına al
     video.elt.setAttribute('playsinline', '');
@@ -97,14 +111,8 @@ function setup() {
 
     toppings = [imgPepperoni, imgMushroom, imgOlive];
 
-    // Autoplay policy kapalı olduğu için AudioContext'i güvenli (hata vermeyecek) şekilde başlat
-    try {
-        if (getAudioContext().state !== 'running') {
-            getAudioContext().resume();
-        }
-    } catch (e) {
-        console.warn("AudioContext otomatik baslatilamadi, ilk dokunusu bekliyor.");
-    }
+    // İlk etkileşimde (tıklama) başlatmak üzere AudioContext'in otomatik başlatılmasını zorlamıyoruz
+    // Aşağıdaki mouseClicked fonksiyonu bunu halledecek.
 
     popOsc = new p5.Oscillator('sine');
     popEnv = new p5.Envelope();
@@ -167,6 +175,21 @@ function getLayout() {
 // Main Draw Loop (Phase Dispatcher)
 // ═══════════════════════════════════════
 function draw() {
+    if (G.cameraError) {
+        background(44, 62, 80);
+        fill(231, 76, 60);
+        noStroke();
+        let minDim = min(width, height);
+        textSize(minDim * 0.08);
+        textAlign(CENTER, CENTER);
+        text("KAMERA BULUNAMADI VEYA İZİN YOK!", width / 2, height / 2 - 80);
+
+        fill(255);
+        textSize(minDim * 0.04);
+        text("Raspberry Pi kullanıyorsanız, tarayıcının kamerayı görebilmesi için\nlütfen uygulamayı 'baslat.sh' dosyası (libcamerify) ile çalıştırın.\n\nEğer tarayıcıdan direkt açtıysanız (localhost vs.),\nURL çubuğundan kamera izni verdiğinizden emin olun.", width / 2, height / 2 + 40);
+        return;
+    }
+
     drawVideoBackground();
 
     // Application auto-starts, bypassing WAITING_START
@@ -313,6 +336,10 @@ function selectDifficulty(key) {
 }
 
 function mouseClicked() {
+    if (getAudioContext().state !== 'running') {
+        getAudioContext().resume();
+    }
+
     if (G.phase === "DIFFICULTY_SELECT") {
         let layout = getLayout();
         let minDim = layout.minDim;

@@ -1,8 +1,12 @@
 #!/bin/bash
 # Bulunulan dizinde (script'in olduğu klasörde) Python ile basit bir sunucu başlat
 cd "$(dirname "$0")" || exit
-# Python ile basit bir sunucu başlat, ipv4 spesifik olarak 127.0.0.1'e bağla
-python3 -m http.server 8000 --bind 127.0.0.1 &
+# Önceki açık kalmış sunucuları kapat
+pkill -f "python3 -m http.server 8000"
+sleep 1
+
+# Python ile basit bir sunucu başlat
+python3 -m http.server 8000 &
 SERVER_PID=$!
 
 # Sunucunun başlaması için 5 saniye bekle
@@ -18,7 +22,7 @@ else
 fi
 
 $BROWSER_CMD \
-  --app=http://localhost:8000 \
+  --app=http://127.0.0.1:8000 \
   --kiosk \
   --window-position=0,0 \
   --autoplay-policy=no-user-gesture-required \
