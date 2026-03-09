@@ -1,5 +1,5 @@
 /*
- * Kesir Pizza Sefi v4.0: Seviye Secimli
+ * Kesir Pizza Sefi v4.1: Seviye Secimli
  * Kolay / Orta / Zor modlari
  */
 
@@ -9,6 +9,14 @@
 let video;
 let handPose;
 let hands = [];
+let cameraStream = null;
+
+const CAMERA_CONSTRAINTS = [
+    { width: 1280, height: 720 },
+    { width: 1920, height: 1080 },
+    { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } },
+    true
+];
 
 // Assets
 let imgPizzaBase;
@@ -60,22 +68,20 @@ let G = {
     diffHoverIndex: -1,
     diffHoverStart: 0,
 
+    cameraInitializing: true,
     cameraLoaded: false,
-    cameraError: false
+    handPoseReady: false,
+    cameraError: false,
+    cameraStatusText: "Kamera hazırlanıyor...",
+    cameraErrorTitle: "Kamera hazırlanamadı",
+    cameraDiagnostics: ""
 };
 
 // ═══════════════════════════════════════
 // Preload & Setup
 // ═══════════════════════════════════════
 function preload() {
-    // Raspberry Pi'de Tensorflow WebGPU çökmelerini ve TypeError ('features') hatalarını önlemek için WebGL zorla
-    if (window.ml5 && typeof window.ml5.setBackend === 'function') {
-        ml5.setBackend("webgl");
-    }
-
-    handPose = ml5.handPose({ flipped: true });
-
-    let cb = "?v=4.0";
+    let cb = "?v=4.1";
     imgPizzaBase = loadImage('assets/pizza_base.png' + cb);
     imgPepperoni = loadImage('assets/topping_pepperoni.png' + cb);
     imgMushroom = loadImage('assets/topping_mushroom.png' + cb);
@@ -84,33 +90,11 @@ function preload() {
 
 function setup() {
     createCanvas(windowWidth, windowHeight);
-
-    let constraints = {
-        video: {
-            width: { ideal: 640 },
-            height: { ideal: 480 }
-        },
-        audio: false
-    };
-
-    video = createCapture(constraints, function () {
-        console.log("Kamera basariyla yuklendi.");
-        G.cameraLoaded = true;
-        // Kamera ancak yüklendiğinde yapay zekayı başlat
-        handPose.detectStart(video, gotHands);
-    });
-
-    // Kamera belirli bir sürede yüklenmezse hata ver
-    setTimeout(() => {
-        // readyState 0 ise veya video elementine hiç ulaşılamadıysa kamera açılmamıştır
-        if (!G.cameraLoaded && (!video || !video.elt || video.elt.readyState === 0)) {
-            G.cameraError = true;
-            console.error("Kamera bulunamadi veya izin verilmedi.");
-        }
-    }, 4000);
-
-    // WebGL / Performans için video DOM öğesi özelliklerini güvence altına al
+    video = createVideo([]);
     video.elt.setAttribute('playsinline', '');
+    video.elt.setAttribute('muted', '');
+    video.elt.muted = true;
+    video.elt.autoplay = true;
     video.size(640, 480);
     video.hide();
 
@@ -134,6 +118,8 @@ function setup() {
 
     // Oyunu başlatan ilk round oluşturmayı çağırıyoruz
     resetRound();
+
+    void initializeCameraPipeline();
 }
 
 function windowResized() {
@@ -148,6 +134,212 @@ function keyPressed() {
     if (key === 'm' || key === 'M') {
         isMirrored = !isMirrored;
     }
+}
+
+async function initializeCameraPipeline() {
+    G.cameraInitializing = true;
+    G.cameraStatusText = "Kamera aranıyor...";
+    G.cameraError = false;
+    G.cameraDiagnostics = "";
+
+    try {
+        const stream = await requestCameraStream();
+        await attachStreamToVideo(stream);
+        G.cameraLoaded = true;
+        G.cameraStatusText = "El algılama hazırlanıyor...";
+        await initializeHandTracking();
+        G.handPoseReady = true;
+        G.cameraInitializing = false;
+        G.cameraStatusText = "";
+        console.log("[KesirSefi] Kamera ve el algılama hazır.");
+    } catch (error) {
+        hands = [];
+        G.cameraLoaded = false;
+        G.handPoseReady = false;
+        G.cameraInitializing = false;
+        G.cameraError = true;
+        G.cameraErrorTitle = "Kamera bulunamadı veya başlatılamadı";
+        G.cameraStatusText = "";
+        G.cameraDiagnostics = await buildCameraDiagnostics(error);
+        console.error("[KesirSefi] Kamera başlatılamadı:", error);
+    }
+}
+
+async function requestCameraStream() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Tarayıcı kamera API'si desteklenmiyor.");
+    }
+
+    let lastError = null;
+
+    for (let i = 0; i < CAMERA_CONSTRAINTS.length; i++) {
+        const constraint = CAMERA_CONSTRAINTS[i];
+        try {
+            console.log(`[KesirSefi] Varsayılan kamera denemesi #${i + 1}:`, constraint);
+            return await navigator.mediaDevices.getUserMedia({ video: constraint, audio: false });
+        } catch (error) {
+            lastError = new Error(`Varsayılan deneme ${i + 1} (${describeConstraint(constraint)}): ${error.name}${error.message ? ` - ${error.message}` : ''}`);
+            console.warn(`[KesirSefi] Varsayılan kamera denemesi #${i + 1} başarısız:`, error.name, error.message);
+        }
+    }
+
+    const devices = await enumerateVideoInputs();
+    for (let deviceIndex = 0; deviceIndex < devices.length; deviceIndex++) {
+        const device = devices[deviceIndex];
+        for (let i = 0; i < CAMERA_CONSTRAINTS.length; i++) {
+            const baseConstraint = CAMERA_CONSTRAINTS[i];
+            const deviceConstraint = buildDeviceConstraint(baseConstraint, device.deviceId);
+            try {
+                console.log(`[KesirSefi] Cihaz denemesi (${getDeviceLabel(device, deviceIndex)}) #${i + 1}:`, deviceConstraint);
+                return await navigator.mediaDevices.getUserMedia({ video: deviceConstraint, audio: false });
+            } catch (error) {
+                const deviceName = getDeviceLabel(device, deviceIndex);
+                lastError = new Error(`Cihaz denemesi ${deviceName} / ${describeConstraint(baseConstraint)}: ${error.name}${error.message ? ` - ${error.message}` : ''}`);
+                console.warn(`[KesirSefi] Cihaz denemesi (${deviceName}) #${i + 1} başarısız:`, error.name, error.message);
+            }
+        }
+    }
+
+    throw lastError || new Error("Hiçbir kamera akışı açılamadı.");
+}
+
+function buildDeviceConstraint(baseConstraint, deviceId) {
+    if (baseConstraint === true) {
+        return { deviceId: { exact: deviceId } };
+    }
+    return {
+        ...baseConstraint,
+        deviceId: { exact: deviceId }
+    };
+}
+
+function describeConstraint(constraint) {
+    if (constraint === true) {
+        return "varsayılan";
+    }
+
+    const width = typeof constraint.width === 'object' ? JSON.stringify(constraint.width) : constraint.width;
+    const height = typeof constraint.height === 'object' ? JSON.stringify(constraint.height) : constraint.height;
+
+    return `${width || "?"}x${height || "?"}`;
+}
+
+async function attachStreamToVideo(stream) {
+    cameraStream = stream;
+    video.elt.srcObject = stream;
+
+    await new Promise((resolve, reject) => {
+        let resolved = false;
+        const timeoutId = setTimeout(() => {
+            if (!resolved) {
+                cleanup();
+                reject(new Error("Video akışı zamanında hazır olmadı."));
+            }
+        }, 12000);
+
+        const handleReady = () => {
+            if (resolved) return;
+            resolved = true;
+            cleanup();
+            resolve();
+        };
+
+        const handleError = () => {
+            if (resolved) return;
+            cleanup();
+            reject(new Error("Video elementi akışı oynatamadı."));
+        };
+
+        const cleanup = () => {
+            clearTimeout(timeoutId);
+            video.elt.removeEventListener('loadedmetadata', handleReady);
+            video.elt.removeEventListener('loadeddata', handleReady);
+            video.elt.removeEventListener('canplay', handleReady);
+            video.elt.removeEventListener('error', handleError);
+        };
+
+        video.elt.addEventListener('loadedmetadata', handleReady, { once: true });
+        video.elt.addEventListener('loadeddata', handleReady, { once: true });
+        video.elt.addEventListener('canplay', handleReady, { once: true });
+        video.elt.addEventListener('error', handleError, { once: true });
+
+        if (video.elt.readyState >= 2) {
+            handleReady();
+        }
+    });
+
+    await video.elt.play();
+
+    const dims = getVideoSourceSize();
+    video.size(dims.width, dims.height);
+}
+
+async function initializeHandTracking() {
+    if (!window.ml5 || typeof ml5.handPose !== 'function') {
+        throw new Error("ml5 handPose yüklenemedi.");
+    }
+
+    // Raspberry Pi'de Tensorflow WebGPU çökmelerini ve 'features' TypeError'larını önlemek için WebGL iste.
+    if (typeof ml5.setBackend === 'function') {
+        try {
+            await ml5.setBackend("webgl");
+        } catch (error) {
+            console.warn("[KesirSefi] ml5.setBackend('webgl') başarısız, varsayılan backend kullanılacak.", error);
+        }
+    }
+
+    handPose = ml5.handPose({ flipped: true });
+    handPose.detectStart(video, gotHands);
+}
+
+async function buildCameraDiagnostics(error) {
+    let details = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+
+    try {
+        const videoDevices = await enumerateVideoInputs();
+        if (videoDevices.length === 0) {
+            details += " | Tarayıcı hiçbir video girişi görmüyor.";
+        } else {
+            const labels = videoDevices.map((device) => device.label || `Cihaz ${device.deviceId.slice(0, 8)}`);
+            details += ` | Görünen kameralar (${videoDevices.length}): ${labels.join(", ")}`;
+        }
+    } catch (diagnosticError) {
+        details += ` | Cihaz tarama hatası: ${diagnosticError.message}`;
+    }
+
+    return details;
+}
+
+async function enumerateVideoInputs() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices
+        .filter((device) => device.kind === 'videoinput')
+        .sort((a, b) => scoreCameraDevice(b) - scoreCameraDevice(a));
+}
+
+function scoreCameraDevice(device) {
+    const label = (device.label || '').toLowerCase();
+    let score = 0;
+
+    if (label.includes('kesirsefi')) score += 5;
+    if (label.includes('camera') || label.includes('kamera')) score += 3;
+    if (label.includes('usb')) score += 1;
+
+    return score;
+}
+
+function getDeviceLabel(device, fallbackIndex = 0) {
+    return device.label || device.deviceId || `kamera-${fallbackIndex + 1}`;
+}
+
+function getVideoSourceSize() {
+    const sourceWidth = video && video.elt ? (video.elt.videoWidth || video.width || 640) : 640;
+    const sourceHeight = video && video.elt ? (video.elt.videoHeight || video.height || 480) : 480;
+
+    return {
+        width: max(1, sourceWidth),
+        height: max(1, sourceHeight)
+    };
 }
 
 // ═══════════════════════════════════════
@@ -184,21 +376,21 @@ function getLayout() {
 // ═══════════════════════════════════════
 function draw() {
     if (G.cameraError) {
-        background(44, 62, 80);
-        fill(231, 76, 60);
-        noStroke();
-        let minDim = min(width, height);
-        textSize(minDim * 0.08);
-        textAlign(CENTER, CENTER);
-        text("KAMERA BULUNAMADI VEYA İZİN YOK!", width / 2, height / 2 - 80);
+        drawStartupError();
+        return;
+    }
 
-        fill(255);
-        textSize(minDim * 0.04);
-        text("Raspberry Pi kullanıyorsanız, tarayıcının kamerayı görebilmesi için\nlütfen uygulamayı 'baslat.sh' dosyası (libcamerify) ile çalıştırın.\n\nEğer tarayıcıdan direkt açtıysanız (localhost vs.),\nURL çubuğundan kamera izni verdiğinizden emin olun.", width / 2, height / 2 + 40);
+    if (!G.cameraLoaded) {
+        drawLoadingState("Kamera hazırlanıyor...", G.cameraStatusText || "Kamera akışı bekleniyor...");
         return;
     }
 
     drawVideoBackground();
+
+    if (!G.handPoseReady) {
+        drawLoadingState("El algılama hazırlanıyor...", G.cameraStatusText || "Model yükleniyor...");
+        return;
+    }
 
     // Application auto-starts, bypassing WAITING_START
 
@@ -212,6 +404,11 @@ function draw() {
 }
 
 function drawVideoBackground() {
+    if (!video || !video.elt || video.elt.readyState < 2) {
+        background(44, 62, 80);
+        return;
+    }
+
     push();
     imageMode(CORNER);
     if (isMirrored) {
@@ -224,6 +421,45 @@ function drawVideoBackground() {
     fill(44, 62, 80, 150);
     noStroke();
     rect(0, 0, width, height);
+}
+
+function drawLoadingState(title, subtitle) {
+    background(44, 62, 80);
+
+    if (G.cameraLoaded) {
+        drawVideoBackground();
+    }
+
+    let minDim = min(width, height);
+    fill(255);
+    noStroke();
+    textAlign(CENTER, CENTER);
+    textSize(minDim * 0.075);
+    text(title, width / 2, height / 2 - 50);
+
+    fill(220);
+    textSize(minDim * 0.038);
+    text(subtitle, width / 2, height / 2 + 20);
+}
+
+function drawStartupError() {
+    background(44, 62, 80);
+    fill(231, 76, 60);
+    noStroke();
+    let minDim = min(width, height);
+    textSize(minDim * 0.07);
+    textAlign(CENTER, CENTER);
+    text(G.cameraErrorTitle || "KAMERA BAŞLATILAMADI", width / 2, height / 2 - 110);
+
+    fill(255);
+    textSize(minDim * 0.036);
+    text("Raspberry Pi kullanıyorsanız uygulamayı 'baslat.sh' ile açın.\nTarayıcıdan doğrudan açtıysanız kamera iznini ve sanal kamerayı kontrol edin.", width / 2, height / 2 - 10);
+
+    if (G.cameraDiagnostics) {
+        textSize(minDim * 0.028);
+        textAlign(LEFT, TOP);
+        text(G.cameraDiagnostics, width * 0.1, height / 2 + 80, width * 0.8, height * 0.22);
+    }
 }
 
 // ═══════════════════════════════════════
@@ -260,8 +496,9 @@ function drawDifficultySelect(layout) {
     let hx = -1, hy = -1;
     if (hands.length > 0 && isPointing(hands[0])) {
         let idx = hands[0].keypoints[8];
-        let nx = isMirrored ? (idx.x / video.width) : (1 - idx.x / video.width);
-        let ny = idx.y / video.height;
+        let sourceSize = getVideoSourceSize();
+        let nx = isMirrored ? (idx.x / sourceSize.width) : (1 - idx.x / sourceSize.width);
+        let ny = idx.y / sourceSize.height;
         hx = lerp(G.historyX || nx * width, nx * width, smoothFactor);
         hy = lerp(G.historyY || ny * height, ny * height, smoothFactor);
         G.historyX = hx;
@@ -860,8 +1097,9 @@ function handleInteraction(cx, cy, size, layout) {
     if (hands.length === 0) return;
 
     let index = hands[0].keypoints[8];
-    let nx = isMirrored ? (index.x / video.width) : (1 - index.x / video.width);
-    let ny = index.y / video.height;
+    let sourceSize = getVideoSourceSize();
+    let nx = isMirrored ? (index.x / sourceSize.width) : (1 - index.x / sourceSize.width);
+    let ny = index.y / sourceSize.height;
 
     let tx = nx * width;
     let ty = ny * height;

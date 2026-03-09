@@ -1,11 +1,17 @@
 #!/bin/bash
 # Kesir Şefi - Raspberry Pi 5 Temiz Başlatıcı (Web Sürümü)
-# Doğrudan GitHub Pages üzerinden açılır, yerel sunucuya ihtiyaç yoktur.
+# Bu sürüm mevcut klasörü yerelden servis eder; böylece son kod doğrudan test edilir.
+
+set -e
+
+REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+PORT=4182
 
 echo "🧹 Eski süreçler temizleniyor..."
 sudo pkill -f rpicam
 sudo pkill -f ffmpeg
 pkill -f chromium
+pkill -f "http.server ${PORT}" 2>/dev/null || true
 sudo rmmod v4l2loopback 2>/dev/null
 
 echo "📦 Gerekli paketler kontrol ediliyor..."
@@ -23,10 +29,16 @@ CAM_PID=$!
 # Kameranın kendine gelmesi için 2 saniye bekliyoruz
 sleep 2
 
+echo "🗂️ Yerel web sunucusu başlatılıyor..."
+cd "$REPO_DIR"
+python3 -m http.server "$PORT" >/dev/null 2>&1 &
+SERVER_PID=$!
+sleep 1
+
 echo "🌐 Tarayıcı (Kesir Şefi) açılıyor..."
-# GitHub Pages adresini Chromium ile kısıtlamalar olmadan açıyoruz
+# Yerel uygulamayı Chromium ile kısıtlamalar olmadan açıyoruz
 chromium \
-  --app=https://hakanatas.github.io/kesir-sefi \
+  --app=http://127.0.0.1:${PORT}/index.html \
   --kiosk \
   --use-fake-ui-for-media-stream \
   --autoplay-policy=no-user-gesture-required \
@@ -35,6 +47,7 @@ chromium \
   --disable-gpu-compositing
 
 # Tarayıcı (oyun) kapatıldığında arkadaki kamerayı da temizle
-echo "🛑 Oyun kapatıldı, kamera akışı durduruluyor..."
+echo "🛑 Oyun kapatıldı, yerel sunucu ve kamera akışı durduruluyor..."
+kill $SERVER_PID 2>/dev/null || true
 kill $CAM_PID
 sudo rmmod v4l2loopback 2>/dev/null
