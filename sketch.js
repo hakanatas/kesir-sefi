@@ -288,7 +288,15 @@ async function initializeHandTracking() {
         }
     }
 
-    handPose = ml5.handPose({ flipped: true });
+    const handPoseModel = ml5.handPose({ flipped: true });
+    handPose = (handPoseModel && typeof handPoseModel.then === 'function')
+        ? await handPoseModel
+        : handPoseModel;
+
+    if (!handPose || typeof handPose.detectStart !== 'function') {
+        throw new Error("ml5 handPose modeli hazır değil.");
+    }
+
     handPose.detectStart(video, gotHands);
 }
 
