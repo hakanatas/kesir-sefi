@@ -1,5 +1,5 @@
 /*
- * Kesir Pizza Sefi v4.2: Seviye Secimli
+ * Kesir Pizza Sefi v4.3: Seviye Secimli
  * Kolay / Orta / Zor modlari
  */
 
@@ -10,6 +10,7 @@ let video;
 let handPose;
 let hands = [];
 let cameraStream = null;
+let handPoseStartAttempted = false;
 
 const CAMERA_CONSTRAINTS = [
     { width: 1280, height: 720 },
@@ -70,6 +71,7 @@ let G = {
 
     cameraInitializing: true,
     cameraLoaded: false,
+    handPoseModelLoaded: false,
     handPoseReady: false,
     cameraError: false,
     cameraStatusText: "Kamera hazırlanıyor...",
@@ -81,7 +83,19 @@ let G = {
 // Preload & Setup
 // ═══════════════════════════════════════
 function preload() {
-    let cb = "?v=4.2";
+    if (window.ml5 && typeof window.ml5.setBackend === 'function') {
+        try {
+            ml5.setBackend("webgl");
+        } catch (error) {
+            console.warn("[KesirSefi] preload sırasında webgl backend ayarlanamadı.", error);
+        }
+    }
+
+    if (window.ml5 && typeof ml5.handPose === 'function') {
+        handPose = ml5.handPose({ flipped: true }, handleHandPoseModelLoaded);
+    }
+
+    let cb = "?v=4.3";
     imgPizzaBase = loadImage('assets/pizza_base.png' + cb);
     imgPepperoni = loadImage('assets/topping_pepperoni.png' + cb);
     imgMushroom = loadImage('assets/topping_mushroom.png' + cb);
@@ -141,17 +155,15 @@ async function initializeCameraPipeline() {
     G.cameraStatusText = "Kamera aranıyor...";
     G.cameraError = false;
     G.cameraDiagnostics = "";
+    handPoseStartAttempted = false;
 
     try {
         const stream = await requestCameraStream();
         await attachStreamToVideo(stream);
         G.cameraLoaded = true;
-        G.cameraStatusText = "El algılama hazırlanıyor...";
-        await initializeHandTracking();
-        G.handPoseReady = true;
         G.cameraInitializing = false;
-        G.cameraStatusText = "";
-        console.log("[KesirSefi] Kamera ve el algılama hazır.");
+        G.cameraStatusText = G.handPoseModelLoaded ? "El algılama başlatılıyor..." : "El algılama modeli yükleniyor...";
+        maybeStartHandTracking();
     } catch (error) {
         hands = [];
         G.cameraLoaded = false;
@@ -163,6 +175,18 @@ async function initializeCameraPipeline() {
         G.cameraDiagnostics = await buildCameraDiagnostics(error);
         console.error("[KesirSefi] Kamera başlatılamadı:", error);
     }
+}
+
+function handleHandPoseModelLoaded() {
+    G.handPoseModelLoaded = true;
+
+    if (!G.cameraLoaded) {
+        G.cameraStatusText = "El algılama modeli hazır, kamera bekleniyor...";
+        return;
+    }
+
+    G.cameraStatusText = "El algılama başlatılıyor...";
+    maybeStartHandTracking();
 }
 
 async function requestCameraStream() {
@@ -274,30 +298,33 @@ async function attachStreamToVideo(stream) {
     video.size(dims.width, dims.height);
 }
 
-async function initializeHandTracking() {
-    if (!window.ml5 || typeof ml5.handPose !== 'function') {
-        throw new Error("ml5 handPose yüklenemedi.");
+function maybeStartHandTracking() {
+    if (handPoseStartAttempted || G.handPoseReady || !G.cameraLoaded || !G.handPoseModelLoaded) {
+        return;
     }
-
-    // Raspberry Pi'de Tensorflow WebGPU çökmelerini ve 'features' TypeError'larını önlemek için WebGL iste.
-    if (typeof ml5.setBackend === 'function') {
-        try {
-            await ml5.setBackend("webgl");
-        } catch (error) {
-            console.warn("[KesirSefi] ml5.setBackend('webgl') başarısız, varsayılan backend kullanılacak.", error);
-        }
-    }
-
-    const handPoseModel = ml5.handPose({ flipped: true });
-    handPose = (handPoseModel && typeof handPoseModel.then === 'function')
-        ? await handPoseModel
-        : handPoseModel;
 
     if (!handPose || typeof handPose.detectStart !== 'function') {
-        throw new Error("ml5 handPose modeli hazır değil.");
+        G.cameraError = true;
+        G.cameraErrorTitle = "El algılama modeli başlatılamadı";
+        G.cameraDiagnostics = "ml5 handPose modeli detectStart için hazır değil.";
+        console.error("[KesirSefi] handPose modeli detectStart için hazır değil.");
+        return;
     }
 
-    handPose.detectStart(video, gotHands);
+    handPoseStartAttempted = true;
+
+    try {
+        handPose.detectStart(video, gotHands);
+        G.handPoseReady = true;
+        G.cameraStatusText = "";
+        console.log("[KesirSefi] Kamera ve el algılama hazır.");
+    } catch (error) {
+        handPoseStartAttempted = false;
+        G.cameraError = true;
+        G.cameraErrorTitle = "El algılama başlatılamadı";
+        G.cameraDiagnostics = error instanceof Error ? error.message : String(error);
+        console.error("[KesirSefi] handPose detectStart başarısız:", error);
+    }
 }
 
 async function buildCameraDiagnostics(error) {
