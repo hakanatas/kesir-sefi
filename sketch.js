@@ -1,5 +1,5 @@
 /*
- * Kesir Pizza Sefi v4.1: Seviye Secimli
+ * Kesir Pizza Sefi v4.2: Seviye Secimli
  * Kolay / Orta / Zor modlari
  */
 
@@ -81,7 +81,7 @@ let G = {
 // Preload & Setup
 // ═══════════════════════════════════════
 function preload() {
-    let cb = "?v=4.1";
+    let cb = "?v=4.2";
     imgPizzaBase = loadImage('assets/pizza_base.png' + cb);
     imgPepperoni = loadImage('assets/topping_pepperoni.png' + cb);
     imgMushroom = loadImage('assets/topping_mushroom.png' + cb);
