@@ -6,6 +6,8 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 PORT=4182
+VIDEO_NR="${VIDEO_NR:-30}"
+VIDEO_DEVICE="${VIDEO_DEVICE:-/dev/video30}"
 
 CHROMIUM_BIN="${CHROMIUM_BIN:-}"
 if [ -z "$CHROMIUM_BIN" ]; then
@@ -31,7 +33,7 @@ echo "📦 Gerekli paketler kontrol ediliyor..."
 sudo apt-get install -y gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libcamera v4l2loopback-dkms v4l2loopback-utils >/dev/null 2>&1
 
 echo "📹 Sanal kamera altyapısı (v4l2loopback) hazırlanıyor..."
-sudo modprobe v4l2loopback devices=1 video_nr=10 card_label="KesirSefiKamera" exclusive_caps=1
+sudo modprobe v4l2loopback devices=1 video_nr="${VIDEO_NR}" card_label="KesirSefiKamera" exclusive_caps=1
 sleep 1
 
 echo "▶️ GStreamer ile kamera akışı başlatılıyor..."
