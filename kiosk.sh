@@ -30,6 +30,37 @@ stop_kiosk() {
     pkill -f "${CHROMIUM_BIN}.*127.0.0.1:${PORT}/index.html" 2>/dev/null || true
 }
 
+wait_for_video_ready() {
+    local device_name_file="/sys/class/video4linux/$(basename "$VIDEO_DEVICE")/name"
+
+    for _ in $(seq 1 30); do
+        if [ -e "$VIDEO_DEVICE" ]; then
+            if [ ! -r "$device_name_file" ]; then
+                sleep 1
+                continue
+            fi
+
+            if [ "$(cat "$device_name_file" 2>/dev/null || true)" != "KesirSefiKamera" ]; then
+                sleep 1
+                continue
+            fi
+
+            if command -v v4l2-ctl >/dev/null 2>&1; then
+                if ! v4l2-ctl --all -d "$VIDEO_DEVICE" >/dev/null 2>&1; then
+                    sleep 1
+                    continue
+                fi
+            fi
+
+            sleep 3
+            return 0
+        fi
+        sleep 1
+    done
+
+    return 1
+}
+
 if [ "${1:-}" = "stop" ]; then
     stop_kiosk
     exit 0
@@ -68,12 +99,9 @@ for _ in $(seq 1 20); do
     sleep 1
 done
 
-for _ in $(seq 1 20); do
-    if [ -e "$VIDEO_DEVICE" ]; then
-        break
-    fi
-    sleep 1
-done
+if ! wait_for_video_ready; then
+    echo "$(date '+%F %T') warning: $VIDEO_DEVICE tam hazir olmadan Chromium baslatiliyor" >> "$KIOSK_LOG"
+fi
 
 "$CHROMIUM_BIN" \
     --app="$URL" \

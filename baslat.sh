@@ -41,8 +41,16 @@ echo "▶️ GStreamer ile kamera akışı başlatılıyor..."
 "$REPO_DIR/camera-bridge.sh" >/tmp/kesir-sefi-camera-bridge.log 2>&1 &
 CAM_PID=$!
 
-# Kameranın kendine gelmesi için 2 saniye bekliyoruz
-sleep 2
+echo "⏳ Sanal kamera hazır bekleniyor..."
+for _ in $(seq 1 30); do
+  if [ -e "$VIDEO_DEVICE" ] && [ "$(cat "/sys/class/video4linux/$(basename "$VIDEO_DEVICE")/name" 2>/dev/null || true)" = "KesirSefiKamera" ]; then
+    if ! command -v v4l2-ctl >/dev/null 2>&1 || v4l2-ctl --all -d "$VIDEO_DEVICE" >/dev/null 2>&1; then
+      sleep 3
+      break
+    fi
+  fi
+  sleep 1
+done
 
 echo "🗂️ Yerel web sunucusu başlatılıyor..."
 cd "$REPO_DIR"

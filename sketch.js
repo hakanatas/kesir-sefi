@@ -11,6 +11,10 @@ let handPose;
 let hands = [];
 let cameraStream = null;
 let handPoseStartAttempted = false;
+let cameraRetryTimer = null;
+let cameraRetryWindowStartedAt = 0;
+let cameraInitializationInFlight = false;
+let deviceChangeListenerRegistered = false;
 
 const CAMERA_CONSTRAINTS = [
     { width: 1280, height: 720 },
@@ -18,6 +22,8 @@ const CAMERA_CONSTRAINTS = [
     { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } },
     true
 ];
+const CAMERA_RETRY_DELAY_MS = 2000;
+const CAMERA_MAX_RETRY_MS = 90000;
 
 // Assets
 let imgPizzaBase;
@@ -95,7 +101,7 @@ function preload() {
         handPose = ml5.handPose({ flipped: true }, handleHandPoseModelLoaded);
     }
 
-    let cb = "?v=4.3";
+    let cb = "?v=4.4";
     imgPizzaBase = loadImage('assets/pizza_base.png' + cb);
     imgPepperoni = loadImage('assets/topping_pepperoni.png' + cb);
     imgMushroom = loadImage('assets/topping_mushroom.png' + cb);
@@ -133,7 +139,8 @@ function setup() {
     // Oyunu başlatan ilk round oluşturmayı çağırıyoruz
     resetRound();
 
-    void initializeCameraPipeline();
+    registerCameraDeviceListeners();
+    void initializeCameraPipeline({ resetRetryWindow: true });
 }
 
 function windowResized() {
@@ -150,30 +157,47 @@ function keyPressed() {
     }
 }
 
-async function initializeCameraPipeline() {
+async function initializeCameraPipeline(options = {}) {
+    const { resetRetryWindow = false } = options;
+
+    if (cameraInitializationInFlight) {
+        return;
+    }
+
+    cameraInitializationInFlight = true;
+    clearCameraRetryTimer();
+
+    if (resetRetryWindow || !cameraRetryWindowStartedAt) {
+        cameraRetryWindowStartedAt = Date.now();
+    }
+
     G.cameraInitializing = true;
     G.cameraStatusText = "Kamera aranıyor...";
     G.cameraError = false;
     G.cameraDiagnostics = "";
     handPoseStartAttempted = false;
 
+    let stream = null;
+
     try {
-        const stream = await requestCameraStream();
+        if (!G.cameraLoaded) {
+            stopMediaStream();
+        }
+
+        stream = await requestCameraStream();
         await attachStreamToVideo(stream);
         G.cameraLoaded = true;
         G.cameraInitializing = false;
         G.cameraStatusText = G.handPoseModelLoaded ? "El algılama başlatılıyor..." : "El algılama modeli yükleniyor...";
         maybeStartHandTracking();
     } catch (error) {
-        hands = [];
-        G.cameraLoaded = false;
-        G.handPoseReady = false;
-        G.cameraInitializing = false;
-        G.cameraError = true;
-        G.cameraErrorTitle = "Kamera bulunamadı veya başlatılamadı";
-        G.cameraStatusText = "";
-        G.cameraDiagnostics = await buildCameraDiagnostics(error);
-        console.error("[KesirSefi] Kamera başlatılamadı:", error);
+        if (stream) {
+            stopMediaStream(stream);
+        }
+
+        await handleCameraInitializationFailure(error);
+    } finally {
+        cameraInitializationInFlight = false;
     }
 }
 
@@ -225,6 +249,135 @@ async function requestCameraStream() {
     }
 
     throw lastError || new Error("Hiçbir kamera akışı açılamadı.");
+}
+
+function clearCameraRetryTimer() {
+    if (cameraRetryTimer) {
+        clearTimeout(cameraRetryTimer);
+        cameraRetryTimer = null;
+    }
+}
+
+function stopMediaStream(stream = cameraStream) {
+    if (!stream) {
+        return;
+    }
+
+    const tracks = typeof stream.getTracks === 'function' ? stream.getTracks() : [];
+    tracks.forEach((track) => track.stop());
+
+    if (stream === cameraStream) {
+        cameraStream = null;
+        if (video && video.elt) {
+            video.elt.srcObject = null;
+        }
+    }
+}
+
+function registerCameraDeviceListeners() {
+    if (
+        deviceChangeListenerRegistered ||
+        !navigator.mediaDevices ||
+        typeof navigator.mediaDevices.addEventListener !== 'function'
+    ) {
+        return;
+    }
+
+    navigator.mediaDevices.addEventListener('devicechange', handleCameraDeviceChange);
+    deviceChangeListenerRegistered = true;
+}
+
+function handleCameraDeviceChange() {
+    console.log("[KesirSefi] Medya cihaz listesi degisti.");
+
+    if (G.cameraLoaded || cameraInitializationInFlight) {
+        return;
+    }
+
+    clearCameraRetryTimer();
+    G.cameraInitializing = true;
+    G.cameraError = false;
+    G.cameraStatusText = "Kamera cihazi algilandi, baglaniliyor...";
+    void initializeCameraPipeline({ resetRetryWindow: false });
+}
+
+async function handleCameraInitializationFailure(error) {
+    hands = [];
+    G.cameraLoaded = false;
+    G.handPoseReady = false;
+
+    const diagnostics = await buildCameraDiagnostics(error);
+    const elapsed = cameraRetryWindowStartedAt ? Date.now() - cameraRetryWindowStartedAt : 0;
+    const remainingMs = Math.max(0, CAMERA_MAX_RETRY_MS - elapsed);
+
+    if (shouldRetryCameraInitialization(error, diagnostics) && remainingMs > 0) {
+        const remainingSeconds = Math.max(1, Math.ceil(remainingMs / 1000));
+        G.cameraInitializing = true;
+        G.cameraError = false;
+        G.cameraErrorTitle = "Kamera bulunamadı veya başlatılamadı";
+        G.cameraStatusText = `${summarizeCameraRetryReason(error, diagnostics)} Tekrar deneniyor... (${remainingSeconds} sn)`;
+        G.cameraDiagnostics = diagnostics;
+        console.warn("[KesirSefi] Kamera henuz hazir degil, tekrar denenecek:", diagnostics);
+
+        cameraRetryTimer = setTimeout(() => {
+            cameraRetryTimer = null;
+            void initializeCameraPipeline({ resetRetryWindow: false });
+        }, CAMERA_RETRY_DELAY_MS);
+        return;
+    }
+
+    G.cameraInitializing = false;
+    G.cameraError = true;
+    G.cameraErrorTitle = "Kamera bulunamadı veya başlatılamadı";
+    G.cameraStatusText = "";
+    G.cameraDiagnostics = diagnostics;
+    console.error("[KesirSefi] Kamera baslatilamadi:", error);
+}
+
+function shouldRetryCameraInitialization(error, diagnostics) {
+    const name = error instanceof Error ? error.name : "";
+    const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+    const normalizedDiagnostics = (diagnostics || "").toLowerCase();
+
+    if (name === "NotAllowedError" || message.includes("permission") || message.includes("izin")) {
+        return false;
+    }
+
+    if (message.includes("desteklenmiyor")) {
+        return false;
+    }
+
+    return (
+        name === "NotFoundError" ||
+        name === "NotReadableError" ||
+        name === "AbortError" ||
+        message.includes("requested device not found") ||
+        message.includes("device not found") ||
+        message.includes("could not start video source") ||
+        message.includes("video elementi akisi oynatamadi") ||
+        message.includes("video akisi zamaninda hazir olmadi") ||
+        normalizedDiagnostics.includes("tarayici hicbir video girisi gormuyor")
+    );
+}
+
+function summarizeCameraRetryReason(error, diagnostics) {
+    const name = error instanceof Error ? error.name : "";
+    const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+    const normalizedDiagnostics = (diagnostics || "").toLowerCase();
+
+    if (name === "NotFoundError" || message.includes("requested device not found") || normalizedDiagnostics.includes("tarayici hicbir video girisi gormuyor")) {
+        return "Kamera koprusu henuz tarayiciya gorunmedi.";
+    }
+
+    if (name === "NotReadableError") {
+        return "Kamera su an mesgul gorunuyor.";
+    }
+
+    if (name === "AbortError") {
+        return "Kamera acilisi kesildi.";
+    }
+
+    return "Kamera hazir olunca yeniden baglanacak.";
 }
 
 function buildDeviceConstraint(baseConstraint, deviceId) {
@@ -475,6 +628,12 @@ function drawLoadingState(title, subtitle) {
     fill(220);
     textSize(minDim * 0.038);
     text(subtitle, width / 2, height / 2 + 20);
+
+    if (G.cameraDiagnostics) {
+        fill(200);
+        textSize(minDim * 0.025);
+        text(G.cameraDiagnostics, width * 0.12, height / 2 + 90, width * 0.76, height * 0.16);
+    }
 }
 
 function drawStartupError() {
