@@ -14,11 +14,6 @@ pkill -f "gst-launch-1.0 libcamerasrc" 2>/dev/null || true
 modprobe v4l2loopback devices=1 video_nr="${VIDEO_NR}" card_label="KesirSefiKamera" exclusive_caps=1
 sleep 1
 
-if command -v v4l2loopback-ctl >/dev/null 2>&1; then
-  v4l2loopback-ctl set-caps "${VIDEO_DEVICE}" "YUYV:${WIDTH}x${HEIGHT}" || true
-  v4l2loopback-ctl set-fps "${VIDEO_DEVICE}" "${FPS}" || true
-fi
-
 run_pipeline() {
   local description="$1"
   shift
