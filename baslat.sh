@@ -2,17 +2,30 @@
 # Kesir Şefi - Raspberry Pi 5 Temiz Başlatıcı (Web Sürümü)
 # Bu sürüm mevcut klasörü yerelden servis eder; böylece son kod doğrudan test edilir.
 
-set -e
+set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 PORT=4182
 
+CHROMIUM_BIN="${CHROMIUM_BIN:-}"
+if [ -z "$CHROMIUM_BIN" ]; then
+  if command -v chromium >/dev/null 2>&1; then
+    CHROMIUM_BIN="$(command -v chromium)"
+  elif command -v chromium-browser >/dev/null 2>&1; then
+    CHROMIUM_BIN="$(command -v chromium-browser)"
+  else
+    echo "Chromium bulunamadi. 'chromium' veya 'chromium-browser' kurulu olmali."
+    exit 1
+  fi
+fi
+
 echo "🧹 Eski süreçler temizleniyor..."
-sudo pkill -f rpicam
-sudo pkill -f ffmpeg
-pkill -f chromium
+sudo pkill -f rpicam 2>/dev/null || true
+sudo pkill -f ffmpeg 2>/dev/null || true
+pkill -f chromium 2>/dev/null || true
+pkill -f chromium-browser 2>/dev/null || true
 pkill -f "http.server ${PORT}" 2>/dev/null || true
-sudo rmmod v4l2loopback 2>/dev/null
+sudo rmmod v4l2loopback 2>/dev/null || true
 
 echo "📦 Gerekli paketler kontrol ediliyor..."
 sudo apt-get install -y gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libcamera v4l2loopback-dkms >/dev/null 2>&1
@@ -37,7 +50,7 @@ sleep 1
 
 echo "🌐 Tarayıcı (Kesir Şefi) açılıyor..."
 # Yerel uygulamayı Chromium ile kısıtlamalar olmadan açıyoruz
-chromium \
+"$CHROMIUM_BIN" \
   --app=http://127.0.0.1:${PORT}/index.html \
   --kiosk \
   --use-fake-ui-for-media-stream \
@@ -49,5 +62,5 @@ chromium \
 # Tarayıcı (oyun) kapatıldığında arkadaki kamerayı da temizle
 echo "🛑 Oyun kapatıldı, yerel sunucu ve kamera akışı durduruluyor..."
 kill $SERVER_PID 2>/dev/null || true
-kill $CAM_PID
-sudo rmmod v4l2loopback 2>/dev/null
+kill $CAM_PID 2>/dev/null || true
+sudo rmmod v4l2loopback 2>/dev/null || true
