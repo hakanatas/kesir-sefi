@@ -38,8 +38,7 @@ sleep 1
 
 echo "▶️ GStreamer ile kamera akışı başlatılıyor..."
 # camera-bridge.sh format fallback'lerini kullanır; Pi kamera negotiated hatalarında daha dayanıklıdır.
-"$REPO_DIR/camera-bridge.sh" >/tmp/kesir-sefi-camera-bridge.log 2>&1 &
-CAM_PID=$!
+sudo "$REPO_DIR/camera-bridge.sh" >/tmp/kesir-sefi-camera-bridge.log 2>&1 &
 
 echo "⏳ Sanal kamera hazır bekleniyor..."
 for _ in $(seq 1 30); do
@@ -72,5 +71,5 @@ echo "🌐 Tarayıcı (Kesir Şefi) açılıyor..."
 # Tarayıcı (oyun) kapatıldığında arkadaki kamerayı da temizle
 echo "🛑 Oyun kapatıldı, yerel sunucu ve kamera akışı durduruluyor..."
 kill $SERVER_PID 2>/dev/null || true
-kill $CAM_PID 2>/dev/null || true
+sudo pkill -f "gst-launch-1.0 libcamerasrc" 2>/dev/null || true
 sudo rmmod v4l2loopback 2>/dev/null || true
