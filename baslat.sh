@@ -6,8 +6,8 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 PORT=4182
-VIDEO_NR="${VIDEO_NR:-30}"
-VIDEO_DEVICE="${VIDEO_DEVICE:-/dev/video30}"
+VIDEO_NR="${VIDEO_NR:-42}"
+VIDEO_DEVICE="${VIDEO_DEVICE:-/dev/video42}"
 
 CHROMIUM_BIN="${CHROMIUM_BIN:-}"
 if [ -z "$CHROMIUM_BIN" ]; then

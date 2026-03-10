@@ -3,8 +3,8 @@
 
 set -euo pipefail
 
-VIDEO_DEVICE="${VIDEO_DEVICE:-/dev/video30}"
-VIDEO_NR="${VIDEO_NR:-30}"
+VIDEO_DEVICE="${VIDEO_DEVICE:-/dev/video42}"
+VIDEO_NR="${VIDEO_NR:-42}"
 WIDTH="${WIDTH:-640}"
 HEIGHT="${HEIGHT:-480}"
 FPS="${FPS:-30}"

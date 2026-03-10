@@ -9,7 +9,7 @@ URL="http://127.0.0.1:${PORT}/index.html"
 LOG_DIR="$REPO_DIR/logs"
 SERVER_LOG="$LOG_DIR/http-server.log"
 KIOSK_LOG="$LOG_DIR/kiosk.log"
-VIDEO_DEVICE="${VIDEO_DEVICE:-/dev/video30}"
+VIDEO_DEVICE="${VIDEO_DEVICE:-/dev/video42}"
 
 mkdir -p "$LOG_DIR"
 
