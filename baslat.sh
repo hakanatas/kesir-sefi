@@ -35,8 +35,8 @@ sudo modprobe v4l2loopback devices=1 video_nr=10 card_label="KesirSefiKamera" ex
 sleep 1
 
 echo "▶️ GStreamer ile kamera akışı başlatılıyor..."
-# GStreamer kullanarak doğrudan ve uyumlu bir şekilde sanal kameraya yayın veriyoruz
-gst-launch-1.0 libcamerasrc ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! v4l2sink device=/dev/video10 >/dev/null 2>&1 &
+# camera-bridge.sh format fallback'lerini kullanır; Pi kamera negotiated hatalarında daha dayanıklıdır.
+"$REPO_DIR/camera-bridge.sh" >/tmp/kesir-sefi-camera-bridge.log 2>&1 &
 CAM_PID=$!
 
 # Kameranın kendine gelmesi için 2 saniye bekliyoruz
