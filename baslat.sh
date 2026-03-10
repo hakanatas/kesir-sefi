@@ -28,7 +28,7 @@ pkill -f "http.server ${PORT}" 2>/dev/null || true
 sudo rmmod v4l2loopback 2>/dev/null || true
 
 echo "📦 Gerekli paketler kontrol ediliyor..."
-sudo apt-get install -y gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libcamera v4l2loopback-dkms >/dev/null 2>&1
+sudo apt-get install -y gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libcamera v4l2loopback-dkms v4l2loopback-utils >/dev/null 2>&1
 
 echo "📹 Sanal kamera altyapısı (v4l2loopback) hazırlanıyor..."
 sudo modprobe v4l2loopback devices=1 video_nr=10 card_label="KesirSefiKamera" exclusive_caps=1

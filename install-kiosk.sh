@@ -33,6 +33,7 @@ sudo apt install -y \
     curl \
     unclutter \
     v4l-utils \
+    v4l2loopback-utils \
     gstreamer1.0-tools \
     gstreamer1.0-plugins-good \
     gstreamer1.0-plugins-bad \
