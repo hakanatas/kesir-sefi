@@ -8,6 +8,7 @@ AUTOSTART_DIR="$HOME/.config/autostart"
 DESKTOP_FILE="$AUTOSTART_DIR/kesir-sefi-kiosk.desktop"
 SERVICE_NAME="kesir-sefi-camera.service"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}"
+TARGET_USER="${SUDO_USER:-$USER}"
 
 if [ "${1:-}" = "uninstall" ]; then
     echo "Kesir Sefi kiosk kurulumu kaldiriliyor..."
@@ -31,6 +32,7 @@ sudo apt install -y \
     python3 \
     curl \
     unclutter \
+    v4l-utils \
     gstreamer1.0-tools \
     gstreamer1.0-plugins-good \
     gstreamer1.0-plugins-bad \
@@ -39,6 +41,7 @@ sudo apt install -y \
 
 echo "2/4 script izinleri ayarlaniyor..."
 chmod +x "$REPO_DIR/baslat.sh" "$REPO_DIR/camera-bridge.sh" "$REPO_DIR/kiosk.sh" "$REPO_DIR/install-kiosk.sh"
+sudo usermod -aG video "$TARGET_USER"
 
 echo "3/4 kamera servisi kuruluyor..."
 sudo tee "$SERVICE_FILE" >/dev/null <<EOF
@@ -78,5 +81,6 @@ EOF
 echo
 echo "Kurulum tamamlandi."
 echo "Bir sonraki yeniden baslatmada Raspberry Pi, masaustu oturumu acildiginda uygulamayi kiosk modunda baslatacak."
+echo "Not: '$TARGET_USER' kullanicisi video grubuna eklendi; bu degisiklik icin reboot gereklidir."
 echo "Manuel test: $REPO_DIR/kiosk.sh"
 echo "Kaldirma: $REPO_DIR/install-kiosk.sh uninstall"
